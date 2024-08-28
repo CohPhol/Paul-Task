@@ -35,7 +35,26 @@ function getFastestSplits(results) {
       }
     });
   });
+
   // console.log(fastestSplits);
+
+  // Just to show the overall fastest athlete (Extra information)
+  const fastestTotal = results
+    .filter(result => isValidTime(result.total_time))
+    .reduce((fastest, current) =>
+      !fastest || timeToSeconds(current.total_time) < timeToSeconds(fastest.total_time)
+        ? current
+        : fastest
+      , null);
+
+  if (fastestTotal) {
+    fastestSplits['overall_total'] = {
+      time: fastestTotal.total_time,
+      athlete: `${fastestTotal.first_name} ${fastestTotal.last_name}`
+    };
+  }
+
+
   return fastestSplits;
 }
 
@@ -90,9 +109,30 @@ function renderResultsWithSplits(data) {
     });
 }
 
+function renderFastestTimes(fastestSplits) {
+  const wrapper = document.querySelector("#fastest-times-body");
+  wrapper.innerHTML = "";
+
+  const splits = ['swim_time', 'bike_time', 'run_time', 'overall_total'];
+  splits.forEach(splitName => {
+    if (fastestSplits[splitName]) {
+      const split = fastestSplits[splitName];
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${splitName.replace('_', ' ').toUpperCase()}</td>
+        <td>${split.time}</td>
+        <td>${split.athlete}</td>
+      `;
+      wrapper.appendChild(row);
+    }
+  });
+}
+
 fetchResults().then((data) => {
   if (data) {
     renderResultsWithSplits(data);
+    const fastestSplits = getFastestSplits(data);
+    renderFastestTimes(fastestSplits);
   }
 });
 
