@@ -1,5 +1,8 @@
 import "./style.css";
 
+const gender = document.querySelector('#gender');
+const search = document.querySelector('#search');
+
 // Step 2 - Time Validation [/]
 function isValidTime(time) {
   // Only for checking of the value
@@ -20,27 +23,38 @@ function timeToSeconds(time) {
 }
 
 // Step 3 - Get the fastest time [/]
-function getFastestSplits(results) {
+function getFastestSplits(results, gender) {
   const fastestSplits = {};
 
-  results.forEach((result) => {
-    result.splits.forEach((split) => {
-      if (isValidTime(split.time)) {
-        if (!fastestSplits[split.name] || timeToSeconds(split.time) < timeToSeconds(fastestSplits[split.name].time)) {
-          fastestSplits[split.name] = {
-            time: split.time,
-            athlete: `${result.first_name} ${result.last_name}`,
-          };
+  results
+    .filter(result => {
+      if (gender === "default")
+        return true;
+      return result.gender === gender;
+    })
+    .forEach((result) => {
+      result.splits.forEach((split) => {
+        if (isValidTime(split.time)) {
+          if (!fastestSplits[split.name] || timeToSeconds(split.time) < timeToSeconds(fastestSplits[split.name].time)) {
+            fastestSplits[split.name] = {
+              time: split.time,
+              athlete: `${result.first_name} ${result.last_name}`,
+            };
+          }
         }
-      }
+      });
     });
-  });
 
   // console.log(fastestSplits);
 
   // Just to show the overall fastest athlete (Extra information)
   const fastestTotal = results
     .filter(result => isValidTime(result.total_time))
+    .filter(result => {
+      if (gender === "default")
+        return true;
+      return result.gender === gender;
+    })
     .reduce((fastest, current) =>
       !fastest || timeToSeconds(current.total_time) < timeToSeconds(fastest.total_time)
         ? current
@@ -79,23 +93,32 @@ function fetchResults() {
 
 function renderResultsWithSplits(data) {
   const wrapper = document.querySelector("#table-body");
-  wrapper.innerHTML = "";
 
-  const fastestSplits = getFastestSplits(data);
+  const filteredResults = () => {
+    wrapper.innerHTML = "";
+    const selectedGender = gender.value;
 
-  data
-    .filter((result) => isValidTime(result.total_time))
-    .sort((a, b) => timeToSeconds(a.total_time) - timeToSeconds(b.total_time))
-    .forEach((result) => {
+    const fastestSplits = getFastestSplits(data, selectedGender);
+
+    const filteredData = data
+      .filter((result) => isValidTime(result.total_time))
+      .filter(result => {
+        if (selectedGender === "default")
+          return true;
+        return result.gender === selectedGender;
+      })
+      .sort((a, b) => timeToSeconds(a.total_time) - timeToSeconds(b.total_time));
+
+    filteredData.forEach((result) => {
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${result.first_name}</td>
-        <td>${result.last_name}</td>
-        <td>${result.gender}</td>
-        <td>${result.division}</td>
-        <td>${result.nationality}</td>
-        <td>${result.total_time}</td>
-      `;
+          <td>${result.first_name}</td>
+          <td>${result.last_name}</td>
+          <td>${result.gender}</td>
+          <td>${result.division}</td>
+          <td>${result.nationality}</td>
+          <td>${result.total_time}</td>
+        `;
 
       result.splits.forEach((split) => {
         if (fastestSplits[split.name]?.time === split.time) {
@@ -107,6 +130,11 @@ function renderResultsWithSplits(data) {
 
       wrapper.appendChild(row);
     });
+
+  }
+  filteredResults();
+
+  search.addEventListener('click', filteredResults);
 }
 
 function renderFastestTimes(fastestSplits) {
@@ -131,7 +159,12 @@ function renderFastestTimes(fastestSplits) {
 fetchResults().then((data) => {
   if (data) {
     renderResultsWithSplits(data);
-    const fastestSplits = getFastestSplits(data);
+
+    const selectedGender = gender.value;
+
+    const fastestSplits = getFastestSplits(data, selectedGender);
+
+
     renderFastestTimes(fastestSplits);
   }
 });
